@@ -87,7 +87,7 @@ async function loadAudio(text, ctx) {
       spd: "5",
       pit: "5",
       vol: "5",
-      per: "103",
+      per: "111",
       aue: "3",
     },
   };
