@@ -1,0 +1,7 @@
+extends layout
+
+block content
+  h1= title
+  p 先检查是否在线，再请求登录 #{title}
+  p 当前登录状态 #{resData}
+  img(src=resData.qrImgBase64 alt='Dynamic Image' style='width: 200px; height: auto')
