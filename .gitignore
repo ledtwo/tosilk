@@ -9,3 +9,6 @@ dist
 dist-ssr
 *.local
 .idea
+*.mp3
+*.silk
+*.silk-v3
