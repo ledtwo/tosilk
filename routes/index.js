@@ -118,18 +118,75 @@ async function loadAudio(text, ctx) {
   };
 }
 
+// 百度语音合成
+// router.post("/toSilk", async (ctx, next) => {
+//   // 取出文字
+//   const text = ctx.request.body.text;
+//   const res = await loadAudio(text, ctx);
+//   ctx.body = {
+//     code: 200,
+//     data: res,
+//   };
+// });
+
+router.get("/", async (ctx, next) => {
+  ctx.body = "koa2 string";
+});
+
+// 国外 elevenlabs.io 语音大模型
+async function loadAudio2(text, ctx) {
+  var options = {
+    method: "POST",
+    url: "https://api.elevenlabs.io/v1/text-to-speech/hkfHEbBvdQFNX4uWHqRF",
+    responseType: "arraybuffer", // 设置响应类型为 arraybuffer
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "*/*",
+      "xi-api-key": "sk_37fa3355b94ebdfdfd3c4419f5fc0e8bf4e04311a22df266",
+    },
+    data: {
+      text,
+      model_id: "eleven_multilingual_v2",
+    },
+  };
+  const response = await axios(options);
+  console.log(response.data);
+  // 将下载的文件保存到本地，文件名取时间戳的月日时分秒
+  // 截取text的前10个字符
+  // 保留中英文数字，去除符号
+  const filePath = path.join(
+    __dirname,
+    "..",
+    "public",
+    "labs" +
+      text.slice(0, 12).replace(/[^\w\u4e00-\u9fa5]/g, "") +
+      dayjs().format("_MM-DD_HH-mm-ss") +
+      ".mp3"
+  );
+  // 写入文件,成功后执行下一步
+  await writeFile(filePath, response.data);
+  // 文件的时长;
+  const duration = await getMp3Duration(filePath);
+
+  console.log(duration);
+  // 将文件转换为silk格式
+  const silkPath = await fileConvert(filePath);
+  const basename = path.basename(silkPath);
+  return {
+    duration,
+    url: `${ctx.origin}/${basename}`,
+  };
+}
+
+// 新版大合成
 router.post("/toSilk", async (ctx, next) => {
   // 取出文字
   const text = ctx.request.body.text;
-  const res = await loadAudio(text, ctx);
+  const res = await loadAudio2(text, ctx);
   ctx.body = {
     code: 200,
     data: res,
   };
-});
-
-router.get("/", async (ctx, next) => {
-  ctx.body = "koa2 string";
 });
 
 module.exports = router;
