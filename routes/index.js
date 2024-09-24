@@ -4,6 +4,10 @@ const fs = require("fs");
 const path = require("path");
 const dayjs = require("dayjs");
 
+// Depends on tencentcloud-sdk-nodejs version 4.0.3 or higher
+const tencentcloud = require("tencentcloud-sdk-nodejs-tts");
+const TtsClient = tencentcloud.tts.v20190823.Client;
+
 // 初始化
 const WxVoice = require("wx-voice");
 var voice = new WxVoice();
@@ -68,6 +72,7 @@ async function getMp3Duration(filePath) {
   });
 }
 
+// 一、百度语音合成
 // 生成音频
 async function loadAudio(text, ctx) {
   var options = {
@@ -118,22 +123,7 @@ async function loadAudio(text, ctx) {
   };
 }
 
-// 百度语音合成
-// router.post("/toSilk", async (ctx, next) => {
-//   // 取出文字
-//   const text = ctx.request.body.text;
-//   const res = await loadAudio(text, ctx);
-//   ctx.body = {
-//     code: 200,
-//     data: res,
-//   };
-// });
-
-router.get("/", async (ctx, next) => {
-  ctx.body = "koa2 string";
-});
-
-// 国外 elevenlabs.io 语音大模型
+// 二、国外 elevenlabs.io 语音大模型
 async function loadAudio2(text, ctx) {
   var options = {
     method: "POST",
@@ -178,11 +168,78 @@ async function loadAudio2(text, ctx) {
   };
 }
 
-// 新版大合成
+// 三、腾讯云语音合成
+
+function generateTencentAudio(text) {
+  return new Promise(async (resolve, reject) => {
+    // 实例化一个认证对象，入参需要传入腾讯云账户 SecretId 和 SecretKey，此处还需注意密钥对的保密
+    // 代码泄露可能会导致 SecretId 和 SecretKey 泄露，并威胁账号下所有资源的安全性。以下代码示例仅供参考，建议采用更安全的方式来使用密钥，请参见：https://cloud.tencent.com/document/product/1278/85305
+    // 密钥可前往官网控制台 https://console.cloud.tencent.com/cam/capi 进行获取
+    const clientConfig = {
+      credential: {
+        secretId: "AKIDTkndLq7AzayINFtJXfdOvEKCvQhkozAG",
+        secretKey: "AF7rPp6EC2lKekcGgAQq8D5oJbfURGyV",
+      },
+      region: "ap-beijing",
+      profile: {
+        httpProfile: {
+          endpoint: "tts.tencentcloudapi.com",
+        },
+      },
+    };
+    // 实例化要请求产品的client对象,clientProfile是可选的
+    const client = new TtsClient(clientConfig);
+    const params = {
+      Text: text,
+      SessionId: "",
+      VoiceType: 301037,
+    };
+    client.TextToVoice(params).then(
+      (data) => {
+        // console.log(data);
+        resolve(data.Audio);
+      },
+      (err) => {
+        console.error("error", err);
+      }
+    );
+  });
+}
+
+async function loadAudio3(text, ctx) {
+  const response = await generateTencentAudio(text);
+  // 将下载的文件保存到本地，文件名取时间戳的月日时分秒
+  // 截取text的前10个字符
+  // 保留中英文数字，去除符号
+  const filePath = path.join(
+    __dirname,
+    "..",
+    "public",
+    "Tencent_" +
+      text.slice(0, 12).replace(/[^\w\u4e00-\u9fa5]/g, "") +
+      dayjs().format("_MM-DD_HH-mm-ss") +
+      ".mp3"
+  );
+  // 写入文件,成功后执行下一步
+  await writeFile(filePath, Buffer.from(response, "base64"));
+  // 文件的时长;
+  const duration = await getMp3Duration(filePath);
+
+  console.log(duration);
+  // 将文件转换为silk格式
+  const silkPath = await fileConvert(filePath);
+  const basename = path.basename(silkPath);
+  return {
+    duration,
+    url: `${ctx.origin}/${basename}`,
+  };
+}
+
+// 接口配置
 router.post("/toSilk", async (ctx, next) => {
   // 取出文字
   const text = ctx.request.body.text;
-  const res = await loadAudio2(text, ctx);
+  const res = await loadAudio3(text, ctx);
   ctx.body = {
     code: 200,
     data: res,

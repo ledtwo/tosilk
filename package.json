@@ -23,6 +23,7 @@
     "koa-views": "^6.2.0",
     "koa2-cors": "^2.0.6",
     "pug": "^2.0.3",
+    "tencentcloud-sdk-nodejs-tts": "^4.0.923",
     "wx-voice": "^0.2.1"
   },
   "devDependencies": {
