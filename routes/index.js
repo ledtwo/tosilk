@@ -193,6 +193,7 @@ function generateTencentAudio(text) {
       Text: text,
       SessionId: "",
       VoiceType: 301037,
+      EmotionCategory: "sajiao",
     };
     client.TextToVoice(params).then(
       (data) => {
