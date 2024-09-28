@@ -245,6 +245,63 @@ router.post("/toSilk", async (ctx, next) => {
     code: 200,
     data: res,
   };
+  clearMp3();
+});
+
+// 加载在线mp3，返回silk格式
+async function loadAudioOnline(url, ctx) {
+  const response = await axios({
+    method: "GET",
+    url,
+    responseType: "arraybuffer", // 设置响应类型为 arraybuffer
+  });
+  console.log(response.data);
+  const filePath = path.join(
+    __dirname,
+    "..",
+    "public",
+    "online_" + dayjs().format("_MM-DD_HH-mm-ss") + ".mp3"
+  );
+  // 写入文件,成功后执行下一步
+  await writeFile(filePath, response.data);
+  // 文件的时长;
+  const duration = await getMp3Duration(filePath);
+
+  console.log(duration);
+  // 将文件转换为silk格式
+  const silkPath = await fileConvert(filePath);
+  const basename = path.basename(silkPath);
+  return {
+    duration,
+    url: `${ctx.origin}/${basename}`,
+  };
+}
+
+//根据文件的创建时间，每日定时清除public目录下，3天以前的mp3文件和silk文件
+async function clearMp3() {
+  const files = fs.readdirSync(path.join(__dirname, "..", "public"));
+  files.forEach((file) => {
+    const filePath = path.join(__dirname, "..", "public", file);
+    const fileStat = fs.statSync(filePath);
+    if (file.endsWith(".mp3") || file.endsWith(".silk")) {
+      if (fileStat.birthtimeMs < dayjs().subtract(3, "day").valueOf()) {
+        console.log("清除文件：", filePath);
+        fs.unlinkSync(filePath);
+      }
+    }
+  });
+}
+// 接口配置
+router.post("/mp3ToSilk", async (ctx, next) => {
+  // 取出文字
+  const url = ctx.request.body.url;
+  console.log(url);
+  const res = await loadAudioOnline(url, ctx);
+  ctx.body = {
+    code: 200,
+    data: res,
+  };
+  clearMp3();
 });
 
 module.exports = router;
