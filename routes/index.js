@@ -393,16 +393,12 @@ router.post("/fileToUrl", async (ctx, next) => {
     try {
       let newFilePath = filePath.replace(".png", ".jpg");
       let image = await Jimp.read(filePath);
-
       // 创建一个白色背景
       const white = await new Jimp(image.getWidth(), image.getHeight(), 0xffffffff);
-
       // 将原图合成到白色背景上
       white.composite(image, 0, 0);
-
       // 保存为JPG
       await white.quality(90).writeAsync(newFilePath);
-
       fileType = "jpg";
       fs.unlinkSync(filePath); // 删除原始PNG文件
       filePath = newFilePath;
