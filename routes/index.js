@@ -366,7 +366,13 @@ router.post("/fileToUrl", async (ctx, next) => {
   const response = await axios({
     method: "GET",
     url,
-    responseType: "arraybuffer", // 设置响应类型为 arraybuffer
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      Accept: "*/*",
+    },
+    responseType: "arraybuffer", // 设Y置响应类型为 arraybuffer
   });
   console.log("远程文件已获取----->");
   // 文件类型根据返回的文件数据自动判断
