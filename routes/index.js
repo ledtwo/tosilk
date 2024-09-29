@@ -365,7 +365,7 @@ router.post("/fileToUrl", async (ctx, next) => {
   const url = ctx.request.body.url;
   console.log("远程url----->", url);
   const response = await axios({
-    method: "GET",
+    method: "get",
     url,
     responseType: "arraybuffer", // 设Y置响应类型为 arraybuffer
   });
