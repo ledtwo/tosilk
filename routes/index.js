@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require("path");
 const dayjs = require("dayjs");
 const ffmpeg = require("fluent-ffmpeg");
+const Jimp = require("jimp");
 
 // Depends on tencentcloud-sdk-nodejs version 4.0.3 or higher
 const tencentcloud = require("tencentcloud-sdk-nodejs-tts");
@@ -383,10 +384,36 @@ router.post("/fileToUrl", async (ctx, next) => {
   }
   fileName = dayjs().format(`${fileType}_YYYY-MM-DD_HH-mm-ss`) + "." + fileType;
   // 将图片保存到本地
-  const filePath = path.join(__dirname, "..", "public", fileName);
+  let filePath = path.join(__dirname, "..", "public", fileName);
   await writeFile(filePath, response.data);
   const basename = path.basename(filePath);
   console.log("本地文件----->", filePath);
+  // 如果是PNG图片，需要调用方法转换为jpg
+  if (fileType === "png") {
+    try {
+      let newFilePath = filePath.replace(".png", ".jpg");
+      let image = await Jimp.read(filePath);
+
+      // 创建一个白色背景
+      const white = await new Jimp(image.getWidth(), image.getHeight(), 0xffffffff);
+
+      // 将原图合成到白色背景上
+      white.composite(image, 0, 0);
+
+      // 保存为JPG
+      await white.quality(90).writeAsync(newFilePath);
+
+      fileType = "jpg";
+      fs.unlinkSync(filePath); // 删除原始PNG文件
+      filePath = newFilePath;
+      fileName = path.basename(newFilePath);
+      console.log("PNG转换为带白色背景的JPG成功");
+    } catch (error) {
+      console.error("PNG转换为JPG失败:", error);
+      // 如果转换失败，保持原来的PNG格式
+      fileType = "png";
+    }
+  }
   // 如果是mp3或者mp4有时长，则返回时长
   if (fileType === "mp3") {
     duration = await getMp3Duration(filePath);
@@ -412,7 +439,7 @@ router.post("/fileToUrl", async (ctx, next) => {
     }
   }
   // 拼接成完整的url
-  const fullUrl = `${ctx.origin}/${basename}`;
+  const fullUrl = `${ctx.origin}/${fileName}`;
   console.log("完整url----->", fullUrl);
   ctx.body = {
     code: 200,
