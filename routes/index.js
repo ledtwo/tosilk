@@ -3,6 +3,7 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const dayjs = require("dayjs");
+const ffmpeg = require("fluent-ffmpeg");
 
 // Depends on tencentcloud-sdk-nodejs version 4.0.3 or higher
 const tencentcloud = require("tencentcloud-sdk-nodejs-tts");
@@ -70,6 +71,59 @@ async function getMp3Duration(filePath) {
       console.log("2、获取时长成功", dur);
     });
   });
+}
+
+function getMp4Duration(filePath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) {
+        console.error("获取视频时长失败:", err);
+        reject(err);
+      } else {
+        const durationInSeconds = metadata.format.duration;
+        resolve(Math.round(durationInSeconds * 100) / 100); // 保留两位小数
+      }
+    });
+  });
+}
+
+function getVideoMetadata(videoPath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(videoPath, (err, metadata) => {
+      if (err) {
+        reject(err);
+      } else {
+        const { width, height } = metadata.streams.find((stream) => stream.codec_type === "video");
+        resolve({ width, height });
+      }
+    });
+  });
+}
+
+async function generateVideoThumbnail(videoPath, thumbnailPath, timeInSeconds = 0) {
+  try {
+    const { width, height } = await getVideoMetadata(videoPath);
+    return new Promise((resolve, reject) => {
+      ffmpeg(videoPath)
+        .screenshots({
+          timestamps: [timeInSeconds],
+          filename: path.basename(thumbnailPath),
+          folder: path.dirname(thumbnailPath),
+          size: `${width}x${height}`, // 使用原始视频的尺寸
+        })
+        .on("end", () => {
+          console.log("视频封面生成成功");
+          resolve(thumbnailPath);
+        })
+        .on("error", (err) => {
+          console.error("生成视频封面失败:", err);
+          reject(err);
+        });
+    });
+  } catch (error) {
+    console.error("获取视频元数据失败:", error);
+    throw error;
+  }
 }
 
 // 一、百度语音合成
@@ -302,6 +356,72 @@ router.post("/mp3ToSilk", async (ctx, next) => {
     data: res,
   };
   clearMp3();
+});
+
+// 请求在线地址，将返回的图片保存到本地
+router.post("/fileToUrl", async (ctx, next) => {
+  // 取出图片地址
+  const url = ctx.request.body.url;
+  console.log("远程url----->", url);
+  const response = await axios({
+    method: "GET",
+    url,
+    responseType: "arraybuffer", // 设置响应类型为 arraybuffer
+  });
+  console.log("远程文件已获取----->");
+  // 文件类型根据返回的文件数据自动判断
+  const contentType = response.headers["content-type"];
+  console.log("contentType----->", contentType);
+  let fileName = "";
+  let fileType = "";
+  let duration = null;
+  let thumbnailUrl = null;
+  if (contentType.startsWith("audio/")) {
+    fileType = "mp3";
+  } else {
+    fileType = contentType.split("/")[1].replace(";", "");
+  }
+  fileName = dayjs().format(`${fileType}_YYYY-MM-DD_HH-mm-ss`) + "." + fileType;
+  // 将图片保存到本地
+  const filePath = path.join(__dirname, "..", "public", fileName);
+  await writeFile(filePath, response.data);
+  const basename = path.basename(filePath);
+  console.log("本地文件----->", filePath);
+  // 如果是mp3或者mp4有时长，则返回时长
+  if (fileType === "mp3") {
+    duration = await getMp3Duration(filePath);
+    console.log("文件时长----->", duration);
+  }
+  // 视频文件怎么获取时长？
+  if (fileType === "mp4") {
+    try {
+      duration = await getMp4Duration(filePath);
+      console.log("文件时长----->", duration);
+
+      // 生成视频封面
+      const thumbnailFileName = `thumbnail_${path.basename(filePath, ".mp4")}.jpg`;
+      const thumbnailPath = path.join(__dirname, "..", "public", thumbnailFileName);
+      await generateVideoThumbnail(filePath, thumbnailPath);
+
+      // 构建封面URL
+      thumbnailUrl = `${ctx.origin}/${thumbnailFileName}`;
+      console.log("视频封面URL----->", thumbnailUrl);
+    } catch (error) {
+      console.error("处理视频时出错:", error);
+      duration = null;
+    }
+  }
+  // 拼接成完整的url
+  const fullUrl = `${ctx.origin}/${basename}`;
+  console.log("完整url----->", fullUrl);
+  ctx.body = {
+    code: 200,
+    data: {
+      url: fullUrl,
+      duration: duration ? duration : null,
+      thumbnailUrl: thumbnailUrl ? thumbnailUrl : null,
+    },
+  };
 });
 
 module.exports = router;
