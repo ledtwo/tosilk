@@ -369,8 +369,9 @@ router.post("/fileToUrl", async (ctx, next) => {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
       "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
       Accept: "*/*",
+      cookie: "PHPSESSID=gs8htu7erl4800gaku1f97ervc",
     },
     responseType: "arraybuffer", // 设Y置响应类型为 arraybuffer
   });
