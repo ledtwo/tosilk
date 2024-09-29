@@ -372,6 +372,10 @@ router.post("/fileToUrl", async (ctx, next) => {
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
       Host: "api.ilingku.com",
       cookie: "PHPSESSID=p41hn2sp4jj73n9eic70mb4hne",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+      authority: "api.ilingku.com",
+      priority: "u=0, i",
     },
     responseType: "arraybuffer", // 设Y置响应类型为 arraybuffer
   });
