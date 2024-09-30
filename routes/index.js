@@ -452,4 +452,50 @@ router.post("/fileToUrl", async (ctx, next) => {
   };
 });
 
+// 接收在线图片地址，需要剪裁底部的10%，然后返回新的图片地址
+router.post("/cropImage", async (ctx, next) => {
+  // 取出图片地址
+  const url = ctx.request.body.url;
+  console.log("远程url----->", url);
+  const response = await axios({
+    method: "GET",
+    url,
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36",
+      cookie: "PHPSESSID=m88at4kms6fiblm9qsu17tc7gn",
+    },
+    responseType: "arraybuffer", // 设置响应类型为 arraybuffer
+  });
+  console.log("远程文件已获取----->");
+  // 文件类型根据返回的文件数据自动判断
+  const contentType = response.headers["content-type"];
+  console.log("contentType----->", contentType);
+  let fileName = "";
+  let fileType = "";
+  fileType = contentType.split("/")[1].replace(";", "");
+  fileName = dayjs().format(`${fileType}_YYYY-MM-DD_HH-mm-ss`) + "." + fileType;
+  // 将图片保存到本地
+  let filePath = path.join(__dirname, "..", "public", fileName);
+  await writeFile(filePath, response.data);
+  const basename = path.basename(filePath);
+  console.log("本地文件----->", filePath);
+  // 剪裁底部10%
+  const image = await Jimp.read(filePath);
+  const height = image.getHeight();
+  const cropHeight = Math.floor(height * 0.85); // 保留90%的高度
+  image.crop(0, 0, image.getWidth(), cropHeight);
+  await image.writeAsync(filePath);
+  console.log("图片剪裁完成");
+  // 拼接成完整的url
+  const fullUrl = `${ctx.origin}/${fileName}`;
+  console.log("完整url----->", fullUrl);
+  ctx.body = {
+    code: 200,
+    data: {
+      url: fullUrl,
+    },
+  };
+});
+
 module.exports = router;
