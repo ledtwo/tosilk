@@ -186,7 +186,7 @@ async function loadAudio2(text, ctx) {
         headers: {
             "Content-Type": "application/json",
             Accept: "*/*",
-            "xi-api-key": process.env.ELEVENLABS_API_KEY || "YOUR_ELEVENLABS_API_KEY",,
+            "xi-api-key": process.env.ELEVENLABS_API_KEY || "YOUR_ELEVENLABS_API_KEY",
         },
         data: {
             text,
